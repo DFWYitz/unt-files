@@ -43,6 +43,12 @@ export function useDirectoryData() {
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        if (i === 0) { // api.allorigins.win returns JSON
+        const data = await response.json();
+        htmlContent = data.contents;
+      } else { // Other proxies return text directly
+        htmlContent = await response.text();
+      }
 
         const htmlContent = await response.text();
         
