@@ -1,7 +1,7 @@
 // src/index.js
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './componants/App.jsx';
+import App from './components/App.jsx';
 
 // Import CSS styles
 import './styles/main.css';
