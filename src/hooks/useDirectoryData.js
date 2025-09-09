@@ -12,73 +12,102 @@ export function useDirectoryData() {
   const [error, setError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
 
-  // Configuration
+  // Configuration - try multiple CORS proxies for reliability
   const BASE_URL = 'https://www.rasmusen.org/special/jackson/';
-  // Using a CORS proxy to bypass CORS restrictions
-  const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+  const CORS_PROXIES = [
+    'https://corsproxy.io/?',
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://cors-anywhere.herokuapp.com/'
+  ];
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
   /**
+   * Attempts to fetch using multiple CORS proxy services
+   */
+  const fetchWithFallback = async () => {
+    let lastError = null;
+    
+    for (const proxy of CORS_PROXIES) {
+      try {
+        const proxiedUrl = proxy + encodeURIComponent(BASE_URL);
+        console.log(`Trying proxy: ${proxy}`);
+        
+        const response = await fetch(proxiedUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const htmlContent = await response.text();
+        
+        if (!htmlContent || htmlContent.trim().length === 0) {
+          throw new Error('Empty response from server');
+        }
+
+        console.log(`Success with proxy: ${proxy}`);
+        return htmlContent;
+        
+      } catch (err) {
+        console.warn(`Proxy ${proxy} failed:`, err.message);
+        lastError = err;
+        continue; // Try next proxy
+      }
+    }
+    
+    // If all proxies fail, throw the last error
+    throw lastError || new Error('All CORS proxies failed');
+  };
+
+  /**
    * Fetches the directory listing from the server
-   * Uses CORS proxy to bypass cross-origin restrictions
    */
   const fetchDirectory = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      // Construct URL with CORS proxy
-      const proxiedUrl = CORS_PROXY + encodeURIComponent(BASE_URL);
       
-      console.log('Fetching directory from:', proxiedUrl);
+      console.log('Fetching directory listing...');
 
-      const response = await fetch(proxiedUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        }
-      });
+      const htmlContent = await fetchWithFallback();
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const htmlContent = await response.text();
-      
-      if (!htmlContent || htmlContent.trim().length === 0) {
-        throw new Error('Received empty response from server');
-      }
-
-      console.log('Raw HTML length:', htmlContent.length);
+      console.log('Raw HTML received, length:', htmlContent.length);
       console.log('First 200 chars:', htmlContent.substring(0, 200));
 
       // Parse the HTML directory listing
       const parsedFiles = parseDirectoryListing(htmlContent, BASE_URL);
       
-      console.log('Parsed files:', parsedFiles.length);
+      console.log('Parsed files count:', parsedFiles.length);
       console.log('Sample files:', parsedFiles.slice(0, 3));
 
       if (parsedFiles.length === 0) {
         console.warn('No files found in directory listing');
+        setError('No files found in the directory listing. The page structure may have changed.');
+        return;
       }
 
       setFiles(parsedFiles);
       setLastFetch(new Date());
+      console.log('Directory data loaded successfully');
       
     } catch (err) {
       console.error('Error fetching directory:', err);
       
       // Provide user-friendly error messages
-      let userMessage = 'Failed to load files';
+      let userMessage = 'Failed to load files from server';
       
-      if (err.name === 'TimeoutError') {
-        userMessage = 'Request timed out. The server may be slow or unavailable.';
-      } else if (err.message.includes('Failed to fetch')) {
-        userMessage = 'Network error. Please check your internet connection.';
+      if (err.message.includes('Failed to fetch') || err.message.includes('CORS')) {
+        userMessage = 'Unable to access the file server. This may be due to network restrictions.';
       } else if (err.message.includes('HTTP')) {
         userMessage = `Server error: ${err.message}`;
+      } else if (err.message.includes('Empty response')) {
+        userMessage = 'The server returned an empty response. Please try again later.';
       } else {
-        userMessage = err.message;
+        userMessage = `Connection error: ${err.message}`;
       }
       
       setError(userMessage);
@@ -100,6 +129,7 @@ export function useDirectoryData() {
    * Refreshes the directory data, bypassing cache
    */
   const refreshData = () => {
+    console.log('Refreshing directory data...');
     setLastFetch(null); // Clear cache
     fetchDirectory();
   };
@@ -114,10 +144,6 @@ export function useDirectoryData() {
 
   /**
    * Filters files based on search criteria
-   * @param {string} searchTerm - Text to search for
-   * @param {string} personFilter - Person name to filter by
-   * @param {string} typeFilter - File type to filter by
-   * @returns {Array} Filtered file array
    */
   const filterFiles = (searchTerm = '', personFilter = 'all', typeFilter = 'all') => {
     return files.filter(file => {
@@ -142,18 +168,17 @@ export function useDirectoryData() {
    * Gets unique values for filter options
    */
   const getFilterOptions = () => {
-    const persons = [...new Set(files.map(f => f.person))].filter(p => p !== 'Unknown').sort();
-    const types = [...new Set(files.map(f => f.type))].sort();
+    const persons = [...new Set(files.map(f => f.person))]
+      .filter(p => p !== 'Unknown')
+      .sort();
+    const types = [...new Set(files.map(f => f.type))]
+      .sort();
     
     return { persons, types };
   };
 
   /**
    * Sorts files by specified criteria
-   * @param {Array} filesToSort - Files to sort
-   * @param {string} sortBy - Sort criteria ('name', 'date', 'size', 'person', 'type')
-   * @param {string} sortOrder - Sort direction ('asc', 'desc')
-   * @returns {Array} Sorted file array
    */
   const sortFiles = (filesToSort, sortBy = 'name', sortOrder = 'asc') => {
     const sorted = [...filesToSort].sort((a, b) => {
