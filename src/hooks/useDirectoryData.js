@@ -15,10 +15,11 @@ export function useDirectoryData() {
   // Configuration - try multiple CORS proxies for reliability
   const BASE_URL = 'https://www.rasmusen.org/special/jackson/';
   const CORS_PROXIES = [
-    'https://corsproxy.io/?',
-    'https://api.codetabs.com/v1/proxy?quest=',
-    'https://cors-anywhere.herokuapp.com/'
-  ];
+  'https://api.allorigins.win/get?url=',
+  'https://corsproxy.io/?',
+  'https://api.codetabs.com/v1/proxy?quest=',
+  'https://cors-anywhere.herokuapp.com/'
+];
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
   /**
