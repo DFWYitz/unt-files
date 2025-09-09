@@ -1,14 +1,19 @@
 {
   "name": "unt-files",
   "version": "1.0.0",
+  "type": "module",
   "description": "site wrapper for html list of links to court files",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "start": "webpack serve --open",
+  "build": "webpack"
+},
+
   "author": "Yitz",
   "license": "ISC",
   "dependencies": {
+    "jsdom": "^26.1.0",
+    "node-fetch": "^3.3.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

@@ -7,18 +7,9 @@
  * @param {string} baseUrl - Base URL for the directory (e.g., 'https://www.rasmusen.org/special/jackson/')
  * @returns {Array} Array of file objects with standardized properties
  */
-// If in Node.js, use jsdom's DOMParser
-let DOMParser;
-if (typeof window === 'undefined') {
-  const { JSDOM } = await import('jsdom');
-  DOMParser = new JSDOM().window.DOMParser;
-} else {
-  DOMParser = window.DOMParser;
-}
-
 export function parseDirectoryListing(htmlContent, baseUrl) {
   // Create a DOM parser to work with the HTML
-  const parser = new DOMParser();
+  const parser = new window.DOMParser();
   const doc = parser.parseFromString(htmlContent, 'text/html');
   
   // Find all anchor tags that represent files (they contain href attributes)
